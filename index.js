@@ -1,6 +1,7 @@
-import {Transform as TransformStream, PassThrough as PassThroughStream} from 'node:stream';
-import zlib from 'node:zlib';
-import mimicResponse from 'mimic-response';
+import stream from 'stream-browserify';
+import zlib from 'browserify-zlib';
+import createBrotliDecompress from 'create-brotli-decompress';
+import mimicResponse from "@esm2cjs/mimic-response";
 
 export default function decompressResponse(response) {
 	const contentEncoding = (response.headers['content-encoding'] || '').toLowerCase();
@@ -15,7 +16,7 @@ export default function decompressResponse(response) {
 
 	function handleContentEncoding(data) {
 		const decompressStream = contentEncoding === 'br'
-			? zlib.createBrotliDecompress()
+			? createBrotliDecompress()
 			: ((contentEncoding === 'deflate' && data.length > 0 && (data[0] & 0x08) === 0) // eslint-disable-line no-bitwise
 				? zlib.createInflateRaw()
 				: zlib.createUnzip());
@@ -32,7 +33,7 @@ export default function decompressResponse(response) {
 		checker.pipe(decompressStream).pipe(finalStream);
 	}
 
-	const checker = new TransformStream({
+	const checker = new stream.Transform({
 		transform(data, _encoding, callback) {
 			if (isEmpty === false) {
 				callback(null, data);
@@ -51,7 +52,7 @@ export default function decompressResponse(response) {
 		},
 	});
 
-	const finalStream = new PassThroughStream({
+	const finalStream = new stream.PassThrough({
 		autoDestroy: false,
 		destroy(error, callback) {
 			response.destroy();
